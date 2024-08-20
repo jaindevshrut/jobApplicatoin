@@ -17,6 +17,30 @@ mongoose.connect('mongodb+srv://jaindevshrut:qhfcsmwOL5AiXAoQ@cluster0.7ou0r.mon
         console.error("Mongoose Not Connected", e);
     });
 
+
+
+const multer = require('multer');
+const fs = require('fs');
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads';
+        if (!fs.existsSync(uploadDir)){
+            fs.mkdirSync(uploadDir);
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+const upload = multer({ storage: storage });
+
+
+
+
+
+
 const static_path = path.join(__dirname, "/");
 
 app.use(express.static(static_path));
@@ -35,22 +59,29 @@ const newSchema = new mongoose.Schema({
     number: Number,
     country: String,
     jobTitle: String,
-    message: String
+    message: String,
+    cv : {
+        type : String,
+        require : true
+    }
 });
 
 const application = mongoose.model("Register", newSchema);
 
-app.post("/submit", async (req, res) => {
-    console.log(req.body);
+app.post("/submit", upload.single('cv'), async (req, res) => {
     const { name, email, number, country, jobTitle, message } = req.body;
+    const cvPath = req.file.path; // Path to the uploaded file
+    
     const newData = new application({
         name: name,
         email: email,
         number: number,
         country: country,
         jobTitle: jobTitle,
-        message: message
+        message: message,
+        cv: cvPath
     });
+    
     try {
         await newData.save();
         res.redirect('/');
@@ -59,6 +90,7 @@ app.post("/submit", async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
